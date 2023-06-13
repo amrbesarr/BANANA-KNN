@@ -1,0 +1,118 @@
+import pandas as pd
+import numpy as np
+from sklearn.neighbors import KNeighborsRegressor
+import matplotlib.pyplot as plt
+import cv2
+from google.colab import drive
+
+import urllib.request
+
+def load_image(url):
+    with urllib.request.urlopen(url) as url_response:
+        img_array = np.array(bytearray(url_response.read()), dtype=np.uint8)
+        img = cv2.imdecode(img_array, -1)
+        return img
+
+# Provide the image URL
+sumber = 'https://img.okezone.com/content/2023/03/01/408/2773420/5-daerah-penghasil-pisang-terbesar-di-indonesia-nomor-4-destinasi-terpopuler-di-dunia-2023-Js0J5t0AEH.jpg'
+
+# Load the image
+citrapisang = load_image(sumber)
+
+if citrapisang is None:
+    print('Failed to load image')
+else:
+    # Sekarang Anda bisa mengakses atribut shape
+    num_rows, num_cols = citrapisang.shape[0], citrapisang.shape[1]
+
+x_center = num_cols // 2
+y_center = num_rows // 2
+center_point = [x_center, y_center]
+
+# Define the box
+start_x = x_center - 25
+start_y = y_center - 25
+end_x = x_center + 25
+end_y = y_center + 25
+start_point = (start_x, start_y)
+end_point = (end_x, end_y)
+
+# Crop the image
+newpisang = citrapisang[start_y:end_y, start_x:end_x]
+
+# Convert to HSV
+citrahsv = cv2.cvtColor(newpisang, cv2.COLOR_BGR2HSV)
+H = citrahsv[:,:,0]
+S = citrahsv[:,:,1]
+V = citrahsv[:,:,2]
+
+# Calculate the mean HSV values
+meanH = float(np.mean(H))
+meanS = float(np.mean(S))
+meanV = float(np.mean(V))
+
+print("Average values of H:", meanH, "S:", meanS, "V:", meanV)
+
+# Predict maturity
+data_pisang = pd.read_csv('/content/drive/MyDrive/amran 20-2051/data foto/Book1.csv')
+X = data_pisang[['Hmean', 'Smean', 'Vmean']]
+Y = data_pisang['kematangan']
+knn = KNeighborsRegressor(n_neighbors=3)
+knn.fit(X, Y)
+
+data = [meanH, meanS, meanV]
+
+hasilprediksi = knn.predict([data])
+hasilprediksi = float(hasilprediksi)
+print("hasil prediksi=", hasilprediksi)
+print("Predicted maturity:", predicted_maturity)
+
+if predicted_maturity == 1:
+    print("Pisang matang")
+elif predicted_maturity == 0:
+    print("Pisang mentah")
+else:
+    print("hampir matang")
+
+# Display images
+import matplotlib.pyplot as plt
+
+# Your code to generate the predicted maturity (hasilprediksi)...
+# hasilprediksi = ...
+
+# Change this with your predicted maturity
+if hasilprediksi == 1:
+    predicted_maturity = 'pisang matang'
+elif hasilprediksi == 0:
+    predicted_maturity = 'pisang mentah'
+else:
+    predicted_maturity = 'hampir matang'
+
+plt.figure(figsize=(10, 6))
+
+plt.subplot(231)
+plt.imshow(cv2.cvtColor(citrapisang, cv2.COLOR_BGR2RGB))
+plt.title(f'Citra Pisang - {predicted_maturity}')
+
+plt.subplot(232)
+plt.imshow(cv2.cvtColor(newpisang, cv2.COLOR_BGR2RGB))
+plt.title('Hasil Crop')
+
+plt.subplot(233)
+plt.imshow(citrahsv)
+plt.title('Citra HSV')
+
+plt.subplot(234)
+plt.imshow(H)
+plt.title('Citra H')
+
+plt.subplot(235)
+plt.imshow(S)
+plt.title('Citra S')
+
+plt.subplot(236)
+plt.imshow(V)
+plt.title('Citra V')
+
+plt.tight_layout()
+plt.show()
